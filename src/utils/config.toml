@@ -1,0 +1,9 @@
+# Configurazione backup
+[backup]
+source_directory = "/path/to/source"
+destination_directory = "/path/to/usb_drive"
+file_types = ["txt", "pdf", "jpg"]  # Tipi di file da includere nel backup
+backup_mode = "full"  # Può essere "full" o "incremental"
+
+[cpu_logging]
+interval_seconds = 120  # Intervallo per log del consumo CPU
