@@ -3,11 +3,11 @@ use std::thread;
 use std::time::Duration;
 use scrap::Display;
 use std::sync::{Arc, Mutex, Condvar};
+use crate::types::BackupState;
 
 const TRESHOLD: i32 = 50;
 
-
-pub fn mouse_movements( state: Arc<(Mutex<u32>, Condvar)> ){
+pub fn mouse_movements(state: Arc<(Mutex<BackupState>, Condvar)> ){
     // Otteniamo il monitor principale
     let display = Display::primary().expect("Impossibile ottenere il monitor principale");
 
@@ -24,7 +24,7 @@ pub fn mouse_movements( state: Arc<(Mutex<u32>, Condvar)> ){
     loop {
         let mouse: MouseState = device_state.get_mouse();
         let position = mouse.coords; // Ottiene le coordinate del mouse
-        println!("Mouse position: {:?}", position);
+        //println!("Mouse position: {:?}", position);
 
         if count < 4 {
             if position.0 < TRESHOLD && position.1 < TRESHOLD {
@@ -47,22 +47,21 @@ pub fn mouse_movements( state: Arc<(Mutex<u32>, Condvar)> ){
                     count = 4;
 
                     let (lock, cvar) = &*state;
-                    let mut state = lock.lock().unwrap();
-                    while *state != 0 {
-                        state = cvar.wait(state).unwrap();
+                    let mut state_guard = lock.lock().unwrap();
+                    while *state_guard != BackupState::Idle {
+                        state_guard = cvar.wait(state_guard).unwrap();
                     }
-                    *state = 1;
+                    *state_guard = BackupState::Confirming;
                     cvar.notify_all();
-                    println!("Pre-backup");
-
+                    println!("Confirming back up...");
                 } else {
                     count = 0;
                 }
             }
         }else{
             let (lock, cvar) = &*state;
-            let mut state = lock.lock().unwrap();
-            if(*state == 0){
+            let mut state_guard = lock.lock().unwrap();
+            if *state_guard == BackupState::Idle {
                 count = 0;
             }else {
                 //it we touch upper left angle
@@ -71,24 +70,24 @@ pub fn mouse_movements( state: Arc<(Mutex<u32>, Condvar)> ){
                     count = 0;
                     println!("Annulla Back-up");
 
-                    *state = 0;
+                    *state_guard = BackupState::Idle;
                     cvar.notify_all();
                 } else if position.0 > (width - TRESHOLD) && position.1 > (height - TRESHOLD) { //bottom right
                     //funzione accetta (fai backup)
                     count = 5;
                     println!("Conferma Back-up");
 
-                    *state = 2;
+                    *state_guard = BackupState::Confirmed;
                     cvar.notify_all();
                 }
             }
         }
 
-        if(count == 5){
+        if count == 5 {
             let (lock, cvar) = &*state;
-            let mut state = lock.lock().unwrap();
-            while *state != 0 {
-                state = cvar.wait(state).unwrap();
+            let mut state_guard = lock.lock().unwrap();
+            while *state_guard != BackupState::Idle {
+                state_guard = cvar.wait(state_guard).unwrap();
             }
             count = 0;
         }

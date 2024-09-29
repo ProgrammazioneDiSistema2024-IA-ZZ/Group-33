@@ -1,50 +1,58 @@
-
 mod mouse;
 mod window;
 mod backup;
+mod read_config;
+mod types;
+
+
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
+use crate::types::BackupState;
+
 
 fn main() {
     // Variabile condivisa tra i thread con Mutex e Condvar
-    let count = Arc::new((Mutex::new(0), Condvar::new()));
+    let state = Arc::new((Mutex::new(BackupState::Idle), Condvar::new()));
 
     // Thread per il monitoraggio del mouse
-    let count_clone = Arc::clone(&count);
+    let state_clone = Arc::clone(&state);
     let mouse_thread = thread::spawn(move || {
-        mouse::mouse_movements(count_clone);
+        mouse::mouse_movements(state_clone);
     });
 
+    // Thread per il backup
+    let state_clone = Arc::clone(&state);
+    let backup_thread = thread::spawn(move || {
+        backup::backup_files(state_clone);
+    });
+
+    //finestra con loop per conferma backup
+    let state_clone = Arc::clone(&state);
+    window::make_window(state_clone);
 
     /*
     // Thread per la gestione della finestra di conferma
-    let count_clone = Arc::clone(&count);
+    let state_clone = Arc::clone(&state);
     let conferma_thread = thread::spawn(move || {
-        conferma_backup(count_clone);
+        window::get_window(state_clone);
     });
-    */
+     */
 
 
 
-    // Thread per il backup
-    let count_clone = Arc::clone(&count);
-    let backup_thread = thread::spawn(move || {
-        backup::backup_files(count_clone);
-    });
 
-    mouse_thread.join().unwrap();
     /*
     // Thread per il logging del consumo di CPU
     let log_thread = thread::spawn(|| {
         log_cpu();
     });
+    */
 
     // Unisci tutti i thread al main thread
     mouse_thread.join().unwrap();
-    conferma_thread.join().unwrap();
+    //conferma_thread.join().unwrap();
     backup_thread.join().unwrap();
-    log_thread.join().unwrap();
-     */
+    //log_thread.join().unwrap();
 }
 
 
