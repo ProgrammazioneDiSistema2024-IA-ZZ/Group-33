@@ -8,7 +8,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
 use crate::types::BackupState;
-//new paolo
+
 
 pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
     let (lock, cvar) = &*state;
