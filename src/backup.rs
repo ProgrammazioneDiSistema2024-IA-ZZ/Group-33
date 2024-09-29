@@ -9,67 +9,77 @@ use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
 use crate::types::BackupState;
 //new paolo
-/*
-pub fn backup_files( state: Arc<(Mutex<u32>, Condvar)>  ) {
-    let start_time = Instant::now();
 
-    //prendere da file//
-    let source = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder".to_string();
-    let destination = "C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder".to_string();
-    let extensions = vec!["mm", "rs", "jpg", "*"]; // Lista di estensioni da copiare (esempio)
-
-    let source_path = Path::new(&source);
-    let destination_path = Path::new(&destination);
-
-    // Crea la directory di destinazione se non esiste
-    if !destination_path.exists() {
-        fs::create_dir_all(destination_path).unwrap();
-    }
-
-    // Funzione ricorsiva per copiare file e directory
-    fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
-        // Itera attraverso gli elementi nella directory sorgente
-        for entry in fs::read_dir(source).unwrap() {
-            let entry = entry.unwrap();
-            let entry_path = entry.path();
-            let file_name = entry.file_name();
-            let dest_path = destination.join(&file_name);
-
-            if entry_path.is_dir() {
-                // Se è una directory, creala e copia i contenuti ricorsivamente
-                fs::create_dir_all(&dest_path).unwrap();
-                copy_dir_recursive(&entry_path, &dest_path, extensions);
-            } else {
-                // Se è un file, copia solo se l'estensione è nell'elenco o se "*" è presente
-                if should_copy_file(&entry_path, extensions) {
-                    fs::copy(&entry_path, &dest_path).unwrap();
-                }
-            }
-        }
-    }
-
-    // Funzione che determina se il file deve essere copiato in base all'estensione
-    fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
-        if extensions.contains(&"*") {
-            return true; // Copia tutto se "*" è presente
+pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
+    let (lock, cvar) = &*state;
+    loop {
+        let mut state = lock.lock().unwrap();
+        while *state != BackupState::BackingUp {
+            state = cvar.wait(state).unwrap();
         }
 
-        if let Some(extension) = file_path.extension() {
-            if let Some(ext_str) = extension.to_str() {
-                return extensions.contains(&ext_str); // Copia solo se l'estensione è nell'elenco
-            }
+        let start_time = Instant::now();
+
+        //prendere da file//
+        let source = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder".to_string();
+        let destination = "C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder".to_string();
+        let extensions = vec!["mm", "rs", "jpg", "*"]; // Lista di estensioni da copiare (esempio)
+
+        let source_path = Path::new(&source);
+        let destination_path = Path::new(&destination);
+
+        // Crea la directory di destinazione se non esiste
+        if !destination_path.exists() {
+            fs::create_dir_all(destination_path).unwrap();
         }
 
-        false // Non copiare se l'estensione non corrisponde
+        // Avvia la copia ricorsiva dal percorso sorgente
+        copy_dir_recursive(source_path, destination_path, &extensions);
+
+        let duration = start_time.elapsed();
+        println!("Backup completato in {:?}", duration);
+
+        *state = BackupState::Idle;
+        cvar.notify_all();
     }
-
-    // Avvia la copia ricorsiva dal percorso sorgente
-    copy_dir_recursive(source_path, destination_path, &extensions);
-
-    let duration = start_time.elapsed();
-    println!("Backup completato in {:?}", duration);
 }
 
+// Funzione ricorsiva per copiare file e directory
+fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
+    // Itera attraverso gli elementi nella directory sorgente
+    for entry in fs::read_dir(source).unwrap() {
+        let entry = entry.unwrap();
+        let entry_path = entry.path();
+        let file_name = entry.file_name();
+        let dest_path = destination.join(&file_name);
+
+        if entry_path.is_dir() {
+            // Se è una directory, creala e copia i contenuti ricorsivamente
+            fs::create_dir_all(&dest_path).unwrap();
+            copy_dir_recursive(&entry_path, &dest_path, extensions);
+        } else {
+            // Se è un file, copia solo se l'estensione è nell'elenco o se "*" è presente
+            if should_copy_file(&entry_path, extensions) {
+                fs::copy(&entry_path, &dest_path).unwrap();
+            }
+        }
+    }
+}
+
+// Funzione che determina se il file deve essere copiato in base all'estensione
+fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
+    if extensions.contains(&"*") {
+        return true; // Copia tutto se "*" è presente
+    }
+
+    if let Some(extension) = file_path.extension() {
+        if let Some(ext_str) = extension.to_str() {
+            return extensions.contains(&ext_str); // Copia solo se l'estensione è nell'elenco
+        }
+    }
+
+    false // Non copiare se l'estensione non corrisponde
+}
 
 // Funzione per trovare il primo disco esterno fisico
 fn find_external_disk() -> Option<String> {
@@ -161,12 +171,10 @@ fn get_cpu_usage(sys: &mut System, pid: Pid) -> f32 {
         0.0 // Process not found
     }
 }
-*/
-
 
 
 //old but gold
-
+/*
 pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)> ) {
     let (lock, cvar) = &*state;
     loop {
@@ -238,3 +246,4 @@ fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
 
     false // Non copiare se l'estensione non corrisponde
 }
+*/

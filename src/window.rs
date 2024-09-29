@@ -23,7 +23,7 @@ pub fn make_window( state: Arc<(Mutex<BackupState>, Condvar)> ){
         .with_title("Warning")
         .with_inner_size(LogicalSize::new(WIDTH, HEIGHT))
         .with_resizable(false)
-        .with_visible(true)
+        .with_visible(false)
         .build(&event_loop)
         .unwrap();
 
@@ -112,7 +112,6 @@ pub fn make_window( state: Arc<(Mutex<BackupState>, Condvar)> ){
 
             // Check the to_close variable to close the window
             Event::MainEventsCleared => {
-                /*
                 let (lock, cvar) = &*state;
                 let mut state_guard = lock.lock().unwrap();
                 while *state_guard != BackupState::Confirming {
@@ -126,8 +125,6 @@ pub fn make_window( state: Arc<(Mutex<BackupState>, Condvar)> ){
                 }
                 window.set_visible(true);
                 window.request_redraw();
-
-                 */
             }
 
             _ => *control_flow = ControlFlow::Wait,
