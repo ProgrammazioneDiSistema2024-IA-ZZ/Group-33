@@ -7,10 +7,10 @@ use std::process::Command;
 use std::fs::OpenOptions;
 use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
+use crate::read_files::read_config;
 use crate::types::BackupState;
 
-
-pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
+pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), Box<dyn std::error::Error>> {
     let (lock, cvar) = &*state;
     loop {
         let mut state = lock.lock().unwrap();
@@ -20,13 +20,14 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
 
         let start_time = Instant::now();
 
-        //prendere da file//
-        let source = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder".to_string();
-        let destination = "C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder".to_string();
-        let extensions = vec!["mm", "rs", "jpg", "*"]; // Lista di estensioni da copiare (esempio)
 
-        let source_path = Path::new(&source);
-        let destination_path = Path::new(&destination);
+        let config = read_config("src/utils/config.toml")?;
+        let source = config.backup.source_directory.clone();
+        let destination = config.backup.destination_directory.clone();
+        let extensions: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
+
+        let mut source_path = Path::new(&source);
+        let mut destination_path = Path::new(&destination);;
 
         // Crea la directory di destinazione se non esiste
         if !destination_path.exists() {
@@ -34,7 +35,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
         }
 
         // Avvia la copia ricorsiva dal percorso sorgente
-        copy_dir_recursive(source_path, destination_path, &extensions);
+        copy_dir_recursive(source_path, destination_path, &extensions[..]);
 
         let duration = start_time.elapsed();
         println!("Backup completato in {:?}", duration);
@@ -42,6 +43,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) {
         *state = BackupState::Idle;
         cvar.notify_all();
     }
+    Ok(())
 }
 
 // Funzione ricorsiva per copiare file e directory
@@ -102,7 +104,6 @@ fn find_external_disk() -> Option<String> {
             }
         }
     }
-
     disk_name
 }
 
@@ -246,4 +247,29 @@ fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
 
     false // Non copiare se l'estensione non corrisponde
 }
+*/
+
+//util match
+/*
+match config {
+            Ok(config) => {
+                println!("Configurazione letta con successo!");
+                /*
+                println!("Cartella sorgente: {}", config.backup.source_directory);
+                println!("Cartella destinazione: {}", config.backup.destination_directory);
+                println!("Tipi di file da salvare: {:?}", config.backup.file_types);
+                println!("Modalità di backup: {}", config.backup.backup_mode);
+                println!("Intervallo di log CPU: {} secondi", config.cpu_logging.interval_seconds);
+                */
+                source_path = Path::new(&config.backup.source_directory);
+                destination_path = Path::new(&config.backup.destination_directory);
+                // Convert Vec<String> to Vec<&str>
+                let vec_of_str: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
+                // Convert Vec<&str> to &[&str]
+                extensions = &vec_of_str;
+            },
+            Err(e) => {
+                println!("Errore nella lettura della configurazione: {}", e);
+            }
+        }
 */

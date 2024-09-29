@@ -1,14 +1,13 @@
 mod mouse;
 mod window;
 mod backup;
-mod read_config;
+mod read_files;
 mod types;
 
 
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
 use crate::types::BackupState;
-
 
 fn main() {
     // Variabile condivisa tra i thread con Mutex e Condvar
