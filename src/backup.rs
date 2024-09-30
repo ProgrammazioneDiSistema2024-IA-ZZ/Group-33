@@ -7,6 +7,8 @@ use std::process::Command;
 use std::fs::OpenOptions;
 use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
+use regex::Regex;
+use chrono::Local;
 use crate::read_files::read_config;
 use crate::types::BackupState;
 
@@ -23,7 +25,14 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
 
         let config = read_config("src/utils/config.toml")?;
         let source = config.backup.source_directory.clone();
-        let destination = config.backup.destination_directory.clone();
+        let destination = if cfg!(target_os = "windows") {
+            find_external_disk_win().unwrap()  // Richiama la funzione per Windows
+        } else if cfg!(target_os = "macos") {
+            find_external_disk_macos().unwrap()  // Richiama la funzione per macOS
+        } else {
+            panic!("Unsupported operating system!");
+        };
+
         let extensions: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
 
         let mut source_path = Path::new(&source);
@@ -84,7 +93,7 @@ fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
 }
 
 // Funzione per trovare il primo disco esterno fisico
-fn find_external_disk() -> Option<String> {
+fn find_external_disk_macos() -> Option<String> {
     // Esegui il comando diskutil list
     let output = Command::new("diskutil")
         .arg("list")
@@ -106,6 +115,83 @@ fn find_external_disk() -> Option<String> {
     }
     disk_name
 }
+
+fn find_external_disk_win() -> Option<String> {
+    let output = Command::new("wmic")
+        .arg("diskdrive")
+        .arg("get")
+        .arg("deviceid,mediatype")
+        .output()
+        .expect("Errore durante l'esecuzione di wmic diskdrive");
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let mut device_id: Option<String> = None;
+
+    for line in stdout.lines() {
+        if line.contains("Removable Media") {
+            if let Some(id) = line.split_whitespace().nth(0) {
+                device_id = Some(id.to_string());
+                break;
+            }
+        }
+    }
+
+    let device_id = device_id?;
+
+    let output = Command::new("wmic")
+        .arg("path")
+        .arg("Win32_DiskDriveToDiskPartition")
+        .output()
+        .expect("Errore durante l'esecuzione di wmic DiskDriveToDiskPartition");
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let mut partition_id: String = "NONE".to_string();
+
+    for line in stdout.lines() {
+        if line.contains(&device_id) {
+            let mut iter = line.split_whitespace();
+            let first = iter.next().unwrap();
+            // Ottieni il resto della stringa dopo il primo spazio
+            partition_id = iter.collect::<Vec<&str>>().join(" ");
+        }
+    }
+
+    let output = Command::new("wmic")
+        .arg("path")
+        .arg("Win32_LogicalDiskToPartition")
+        .output()
+        .expect("Errore durante l'esecuzione di wmic LogicalDiskToPartition");
+
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let re = Regex::new(r#"DeviceID="([A-Z]:)""#).unwrap();
+
+    for line in stdout.lines() {
+        if line.contains(&partition_id) {
+            if let Some(caps) = re.captures(line) {
+                // Ottieni la lettera del disco
+                let disk_letter = &caps[1];
+                let mut full_path = disk_letter.to_string();
+                full_path.push_str("\\backup ");
+                let today = Local::now();
+                let formatted_date = today.format("%Y-%m-%d").to_string();
+
+                // Concatenala alla stringa
+                full_path.push_str(&formatted_date);
+                return Some(full_path);
+            } else {
+                println!("Lettera del disco non trovata.");
+                return None;
+            }
+
+        }
+    }
+
+    None
+}
+
 
 // Funzione per ottenere il percorso di montaggio del disco
 fn get_mount_point(disk: &str) -> Option<String> {
