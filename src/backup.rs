@@ -22,11 +22,10 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
 
         let start_time = Instant::now();
 
-
         let config = read_config("src/utils/config.toml")?;
         let source = config.backup.source_directory.clone();
         let destination = if cfg!(target_os = "windows") {
-            find_external_disk_win().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
+            find_external_disk_win(&source).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
             find_external_disk_macos().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
@@ -142,7 +141,7 @@ fn find_external_disk_linux() -> Option<String> {
     disk_name
 }
 
-fn find_external_disk_win() -> Option<String> {
+fn find_external_disk_win(source_path:&str) -> Option<String> {
     let output = Command::new("wmic")
         .arg("diskdrive")
         .arg("get")
@@ -152,19 +151,23 @@ fn find_external_disk_win() -> Option<String> {
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    let mut device_id: Option<String> = None;
+    let mut tmp_device_id: Option<String> = None;
 
     for line in stdout.lines() {
         if line.contains("Removable Media") {
             if let Some(id) = line.split_whitespace().nth(0) {
-                device_id = Some(id.to_string());
+                tmp_device_id = Some(id.to_string());
                 break;
             }
         }
-        else { return None }
     }
 
-    let device_id = device_id?;
+    let device_id;
+    if(tmp_device_id.is_none()){
+        return None;
+    }else {
+        device_id = tmp_device_id.unwrap();
+    }
 
     let output = Command::new("wmic")
         .arg("path")
@@ -201,11 +204,14 @@ fn find_external_disk_win() -> Option<String> {
                 // Ottieni la lettera del disco
                 let disk_letter = &caps[1];
                 let mut full_path = disk_letter.to_string();
-                full_path.push_str("\\backup ");
+                full_path.push_str("\\backup (");
                 let today = Local::now();
+                let original_folder = source_path.split("\\").last().unwrap();
                 let formatted_date = today.format("%Y-%m-%d").to_string();
 
                 // Concatenala alla stringa
+                full_path.push_str(&original_folder);
+                full_path.push_str(") ");
                 full_path.push_str(&formatted_date);
                 return Some(full_path);
             } else {
