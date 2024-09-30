@@ -29,6 +29,8 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
             find_external_disk_win().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
             find_external_disk_macos().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
+        } else if cfg!(target_os = "linux") {
+            find_external_disk_linux().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Linux
         } else {
             panic!("Unsupported operating system!");
         };
@@ -109,6 +111,30 @@ fn find_external_disk_macos() -> Option<String> {
         if line.contains("external, physical") {
             if let Some(disk) = line.split_whitespace().next() {
                 disk_name = Some(disk.to_string());
+                break;
+            }
+        }
+    }
+    disk_name
+}
+
+fn find_external_disk_linux() -> Option<String> {
+    // Esegui il comando lsblk con l'opzione -o TYPE,NAME per ottenere i dispositivi e i tipi
+    let output = Command::new("lsblk")
+        .arg("-o")
+        .arg("NAME,TYPE,TRAN")
+        .output()
+        .expect("Errore durante l'esecuzione di lsblk");
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let mut disk_name: Option<String> = None;
+
+    // Cerchiamo il primo dispositivo esterno (collegato via USB, TRAN == "usb")
+    for line in stdout.lines() {
+        if line.contains("usb") && line.contains("disk") {
+            if let Some(name) = line.split_whitespace().next() {
+                disk_name = Some(name.to_string());
                 break;
             }
         }
