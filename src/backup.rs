@@ -26,9 +26,9 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         let config = read_config("src/utils/config.toml")?;
         let source = config.backup.source_directory.clone();
         let destination = if cfg!(target_os = "windows") {
-            find_external_disk_win().unwrap()  // Richiama la funzione per Windows
+            find_external_disk_win().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
-            find_external_disk_macos().unwrap()  // Richiama la funzione per macOS
+            find_external_disk_macos().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else {
             panic!("Unsupported operating system!");
         };
@@ -135,6 +135,7 @@ fn find_external_disk_win() -> Option<String> {
                 break;
             }
         }
+        else { return None }
     }
 
     let device_id = device_id?;
