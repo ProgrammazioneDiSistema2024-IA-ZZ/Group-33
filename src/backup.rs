@@ -16,6 +16,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
     let (lock, cvar) = &*state;
     loop {
         let mut state = lock.lock().unwrap();
+
         while *state != BackupState::BackingUp {
             state = cvar.wait(state).unwrap();
         }
@@ -29,10 +30,13 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         } else if cfg!(target_os = "macos") {
             get_mount_point(&find_external_disk_macos().unwrap()).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
-            find_external_disk_linux().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Linux
-        } else {
+            find_usb_partition_mountpoint().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
+        }
+         else {
             panic!("Unsupported operating system!");
         };
+
+        println!("{}", &destination);
 
         let extensions: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
 
@@ -117,28 +121,43 @@ fn find_external_disk_macos() -> Option<String> {
     disk_name
 }
 
-fn find_external_disk_linux() -> Option<String> {
-    // Esegui il comando lsblk con l'opzione -o TYPE,NAME per ottenere i dispositivi e i tipi
+fn find_usb_partition_mountpoint() -> Option<String> {
+    // Esegui il comando lsblk con l'opzione -o NAME,TYPE,TRAN,MOUNTPOINT per ottenere i dispositivi, i tipi e i punti di mount
     let output = Command::new("lsblk")
         .arg("-o")
-        .arg("NAME,TYPE,TRAN")
+        .arg("NAME,TYPE,TRAN,MOUNTPOINT")
         .output()
         .expect("Errore durante l'esecuzione di lsblk");
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    let mut disk_name: Option<String> = None;
 
-    // Cerchiamo il primo dispositivo esterno (collegato via USB, TRAN == "usb")
+    let mut current_device_is_usb = false;
+
+    // Cerchiamo tutti i dispositivi esterni (collegati via USB, TRAN == "usb") e le partizioni montate
     for line in stdout.lines() {
-        if line.contains("usb") && line.contains("disk") {
-            if let Some(name) = line.split_whitespace().next() {
-                disk_name = Some(name.to_string());
-                break;
-            }
+        // Split the line into columns (NAME, TYPE, TRAN, MOUNTPOINT)
+        let columns: Vec<&str> = line.split_whitespace().collect();
+
+        // Controlla se la linea rappresenta un "disk" di tipo "usb"
+        if columns.len() >= 3 && columns[1] == "disk" && columns[2] == "usb" {
+            current_device_is_usb = true;  // Imposta un flag per indicare che il disco è USB
+        }
+
+        // Se la linea rappresenta una partizione e appartiene a un disco USB, prendi il mountpoint
+        if columns.len() == 3 && columns[1] == "part" && current_device_is_usb && !columns[2].is_empty() {
+            // Ritorna subito il primo mountpoint trovato
+            return Some(columns[2].to_string());
+        }
+
+        // Resetta il flag per dispositivi non USB
+        if columns.len() >= 3 && columns[1] == "disk" && columns[2] != "usb" {
+            current_device_is_usb = false;
         }
     }
-    disk_name
+
+    // Nessun mountpoint USB trovato
+    None
 }
 
 fn find_external_disk_win(source_path:&str) -> Option<String> {
@@ -237,13 +256,39 @@ fn get_mount_point(disk: &str) -> Option<String> {
 
     let stdout = String::from_utf8(output.stdout).unwrap();
 
+
     // Cerca la linea che contiene "Mount Point"
     for line in stdout.lines() {
+
         if line.contains("Mount Point") {
+
             let parts: Vec<&str> = line.split(": ").collect();
             if parts.len() == 2 {
                 return Some(parts[1].trim().to_string());
             }
+        }
+    }
+
+    None
+}
+
+fn get_mount_point_linux(disk: &str) -> Option<String> {
+    // Esegui il comando lsblk per ottenere il punto di montaggio del disco specificato
+    let output = Command::new("lsblk")
+        .arg("-o")
+        .arg("MOUNTPOINT")
+        .arg(format!("/dev/{}", disk))
+        .output()
+        .expect("Errore durante l'esecuzione di lsblk");
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Cerca la linea che contiene il mount point
+    for line in stdout.lines() {
+        println!("{}", line);
+        let trimmed_line = line.trim();
+        if !trimmed_line.is_empty() {
+            return Some(trimmed_line.to_string());
         }
     }
 
