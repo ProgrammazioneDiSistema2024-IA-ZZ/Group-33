@@ -54,6 +54,10 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         let duration = start_time.elapsed();
         println!("Backup completato in {:?}", duration);
 
+        log_backup_summary(destination_path, start_time);
+
+        println!("log salvato");
+
         *state = BackupState::Idle;
         cvar.notify_all();
     }
@@ -128,7 +132,7 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
                 full_path.push_str("\\backup (");
                 let today = Local::now();
                 let original_folder = source_path.split("\\").last().unwrap();
-                let formatted_date = today.format("%Y-%m-%d").to_string();
+                let formatted_date = today.format("Date_%Y-%m-%d Time_%H_%M_%S").to_string();
 
                 // Concatenala alla stringa
                 full_path.push_str(&original_folder);
@@ -297,6 +301,43 @@ fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
 
 
 
+fn log_backup_summary(destination: &Path, start_time: Instant) {
+    let elapsed_time = start_time.elapsed();
+    let total_size = calculate_directory_size(destination);
+
+    let log_message = format!(
+        "Backup completato\nTempo impiegato: {:?}\nDimensione totale: {} bytes\n",
+        elapsed_time,
+        total_size
+    );
+
+    fs::write(Path::new(destination).join("backup_log.txt"), log_message).unwrap();
+}
+
+fn calculate_directory_size(dir: &Path) -> u64 {
+    let mut total_size = 0;
+
+    // Leggi ogni voce nella directory
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let entry_path = entry.path();
+        let metadata = fs::metadata(&entry_path).unwrap();
+
+        // Se la voce è un file, somma la sua dimensione
+        if metadata.is_file() {
+            total_size += metadata.len();
+        }
+        // Se la voce è una sottocartella, calcola ricorsivamente la sua dimensione
+        else if metadata.is_dir() {
+            total_size += calculate_directory_size(&entry_path);
+        }
+    }
+
+    total_size
+}
+
+
+/*
 // Funzione che registra l'utilizzo della CPU ogni `interval_seconds` secondi
 fn log_cpu_usage_periodically(pid: Pid, interval_seconds: u64, log_file_path: &str) {
     let mut sys = System::new_all();
@@ -338,4 +379,4 @@ fn get_cpu_usage(sys: &mut System, pid: Pid) -> f32 {
         0.0 // Process not found
     }
 }
-
+*/
