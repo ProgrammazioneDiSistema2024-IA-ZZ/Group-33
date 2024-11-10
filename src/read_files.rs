@@ -6,7 +6,6 @@ pub struct BackupConfig {
     pub source_directory: String,
     pub destination_directory: String,
     pub file_types: Vec<String>,
-    pub backup_mode: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -38,7 +38,6 @@ pub fn make_window( state: Arc<(Mutex<BackupState>, Condvar)> ){
     let font_data = include_bytes!("../fonts/DejaVuSans-Bold.ttf"); // Change path if necessary
     let font = Font::try_from_bytes(font_data as &[u8]).expect("Errore nel caricamento del font.");
 
-
     // Loop of events
     event_loop.run(move |event, _, control_flow| {
         match event {

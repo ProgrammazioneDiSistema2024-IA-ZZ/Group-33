@@ -3,7 +3,6 @@
 source_directory = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder"
 destination_directory = "D:\\my_backup" #"C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder"
 file_types = ["mm", "rs", "jpg", "*"]  # Tipi di file da includere nel backup
-backup_mode = "full"  # Può essere "full" o "incremental"
 
 [cpu_logging]
 interval_seconds = 120  # Intervallo per log del consumo CPU

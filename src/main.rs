@@ -38,8 +38,6 @@ fn main() {
      */
 
 
-
-
     /*
     // Thread per il logging del consumo di CPU
     let log_thread = thread::spawn(|| {
