@@ -28,7 +28,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         let destination = if cfg!(target_os = "windows") {
             find_external_disk_win(&source).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
-            get_mount_point(&find_external_disk_macos().unwrap()).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
+            get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
             find_usb_partition_mountpoint().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
         }
@@ -60,106 +60,8 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
     Ok(())
 }
 
-// Funzione ricorsiva per copiare file e directory
-fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
-    // Itera attraverso gli elementi nella directory sorgente
-    for entry in fs::read_dir(source).unwrap() {
-        let entry = entry.unwrap();
-        let entry_path = entry.path();
-        let file_name = entry.file_name();
-        let dest_path = destination.join(&file_name);
 
-        if entry_path.is_dir() {
-            // Se è una directory, creala e copia i contenuti ricorsivamente
-            fs::create_dir_all(&dest_path).unwrap();
-            copy_dir_recursive(&entry_path, &dest_path, extensions);
-        } else {
-            // Se è un file, copia solo se l'estensione è nell'elenco o se "*" è presente
-            if should_copy_file(&entry_path, extensions) {
-                fs::copy(&entry_path, &dest_path).unwrap();
-            }
-        }
-    }
-}
-
-// Funzione che determina se il file deve essere copiato in base all'estensione
-fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
-    if extensions.contains(&"*") {
-        return true; // Copia tutto se "*" è presente
-    }
-
-    if let Some(extension) = file_path.extension() {
-        if let Some(ext_str) = extension.to_str() {
-            return extensions.contains(&ext_str); // Copia solo se l'estensione è nell'elenco
-        }
-    }
-
-    false // Non copiare se l'estensione non corrisponde
-}
-
-// Funzione per trovare il primo disco esterno fisico
-fn find_external_disk_macos() -> Option<String> {
-    // Esegui il comando diskutil list
-    let output = Command::new("diskutil")
-        .arg("list")
-        .output()
-        .expect("Errore durante l'esecuzione di diskutil list");
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    let mut disk_name: Option<String> = None;
-
-    // Cerca la prima occorrenza di un disco esterno fisico
-    for line in stdout.lines() {
-        if line.contains("external, physical") {
-            if let Some(disk) = line.split_whitespace().next() {
-                disk_name = Some(disk.to_string());
-                break;
-            }
-        }
-    }
-    disk_name
-}
-
-fn find_usb_partition_mountpoint() -> Option<String> {
-    // Esegui il comando lsblk con l'opzione -o NAME,TYPE,TRAN,MOUNTPOINT per ottenere i dispositivi, i tipi e i punti di mount
-    let output = Command::new("lsblk")
-        .arg("-o")
-        .arg("NAME,TYPE,TRAN,MOUNTPOINT")
-        .output()
-        .expect("Errore durante l'esecuzione di lsblk");
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-
-    let mut current_device_is_usb = false;
-
-    // Cerchiamo tutti i dispositivi esterni (collegati via USB, TRAN == "usb") e le partizioni montate
-    for line in stdout.lines() {
-        // Split the line into columns (NAME, TYPE, TRAN, MOUNTPOINT)
-        let columns: Vec<&str> = line.split_whitespace().collect();
-
-        // Controlla se la linea rappresenta un "disk" di tipo "usb"
-        if columns.len() >= 3 && columns[1] == "disk" && columns[2] == "usb" {
-            current_device_is_usb = true;  // Imposta un flag per indicare che il disco è USB
-        }
-
-        // Se la linea rappresenta una partizione e appartiene a un disco USB, prendi il mountpoint
-        if columns.len() == 3 && columns[1] == "part" && current_device_is_usb && !columns[2].is_empty() {
-            // Ritorna subito il primo mountpoint trovato
-            return Some(columns[2].to_string());
-        }
-
-        // Resetta il flag per dispositivi non USB
-        if columns.len() >= 3 && columns[1] == "disk" && columns[2] != "usb" {
-            current_device_is_usb = false;
-        }
-    }
-
-    // Nessun mountpoint USB trovato
-    None
-}
-
+// WINDOWS
 fn find_external_disk_win(source_path:&str) -> Option<String> {
     let output = Command::new("wmic")
         .arg("diskdrive")
@@ -243,10 +145,9 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
 
     None
 }
-
-
+// MACOS
 // Funzione per ottenere il percorso di montaggio del disco
-fn get_mount_point(disk: &str) -> Option<String> {
+fn get_mount_point_macos(disk: &str) -> Option<String> {
     // Esegui il comando diskutil info per il disco specificato
     let output = Command::new("diskutil")
         .arg("info")
@@ -271,7 +172,29 @@ fn get_mount_point(disk: &str) -> Option<String> {
 
     None
 }
+fn find_external_disk_macos() -> Option<String> {
+    // Esegui il comando diskutil list
+    let output = Command::new("diskutil")
+        .arg("list")
+        .output()
+        .expect("Errore durante l'esecuzione di diskutil list");
 
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let mut disk_name: Option<String> = None;
+
+    // Cerca la prima occorrenza di un disco esterno fisico
+    for line in stdout.lines() {
+        if line.contains("external, physical") {
+            if let Some(disk) = line.split_whitespace().next() {
+                disk_name = Some(disk.to_string());
+                break;
+            }
+        }
+    }
+    disk_name
+}
+// LINUX
 fn get_mount_point_linux(disk: &str) -> Option<String> {
     // Esegui il comando lsblk per ottenere il punto di montaggio del disco specificato
     let output = Command::new("lsblk")
@@ -294,6 +217,85 @@ fn get_mount_point_linux(disk: &str) -> Option<String> {
 
     None
 }
+fn find_usb_partition_mountpoint() -> Option<String> {
+    // Esegui il comando lsblk con l'opzione -o NAME,TYPE,TRAN,MOUNTPOINT per ottenere i dispositivi, i tipi e i punti di mount
+    let output = Command::new("lsblk")
+        .arg("-o")
+        .arg("NAME,TYPE,TRAN,MOUNTPOINT")
+        .output()
+        .expect("Errore durante l'esecuzione di lsblk");
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+
+    let mut current_device_is_usb = false;
+
+    // Cerchiamo tutti i dispositivi esterni (collegati via USB, TRAN == "usb") e le partizioni montate
+    for line in stdout.lines() {
+        // Split the line into columns (NAME, TYPE, TRAN, MOUNTPOINT)
+        let columns: Vec<&str> = line.split_whitespace().collect();
+
+        // Controlla se la linea rappresenta un "disk" di tipo "usb"
+        if columns.len() >= 3 && columns[1] == "disk" && columns[2] == "usb" {
+            current_device_is_usb = true;  // Imposta un flag per indicare che il disco è USB
+        }
+
+        // Se la linea rappresenta una partizione e appartiene a un disco USB, prendi il mountpoint
+        if columns.len() == 3 && columns[1] == "part" && current_device_is_usb && !columns[2].is_empty() {
+            // Ritorna subito il primo mountpoint trovato
+            return Some(columns[2].to_string());
+        }
+
+        // Resetta il flag per dispositivi non USB
+        if columns.len() >= 3 && columns[1] == "disk" && columns[2] != "usb" {
+            current_device_is_usb = false;
+        }
+    }
+
+    // Nessun mountpoint USB trovato
+    None
+}
+
+
+
+// Funzione ricorsiva per copiare file e directory
+fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
+    // Itera attraverso gli elementi nella directory sorgente
+    for entry in fs::read_dir(source).unwrap() {
+        let entry = entry.unwrap();
+        let entry_path = entry.path();
+        let file_name = entry.file_name();
+        let dest_path = destination.join(&file_name);
+
+        if entry_path.is_dir() {
+            // Se è una directory, creala e copia i contenuti ricorsivamente
+            fs::create_dir_all(&dest_path).unwrap();
+            copy_dir_recursive(&entry_path, &dest_path, extensions);
+        } else {
+            // Se è un file, copia solo se l'estensione è nell'elenco o se "*" è presente
+            if should_copy_file(&entry_path, extensions) {
+                fs::copy(&entry_path, &dest_path).unwrap();
+            }
+        }
+    }
+}
+
+// Funzione che determina se il file deve essere copiato in base all'estensione
+fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
+    if extensions.contains(&"*") {
+        return true; // Copia tutto se "*" è presente
+    }
+
+    if let Some(extension) = file_path.extension() {
+        if let Some(ext_str) = extension.to_str() {
+            return extensions.contains(&ext_str); // Copia solo se l'estensione è nell'elenco
+        }
+    }
+
+    false // Non copiare se l'estensione non corrisponde
+}
+
+
 
 // Funzione che registra l'utilizzo della CPU ogni `interval_seconds` secondi
 fn log_cpu_usage_periodically(pid: Pid, interval_seconds: u64, log_file_path: &str) {
@@ -337,103 +339,3 @@ fn get_cpu_usage(sys: &mut System, pid: Pid) -> f32 {
     }
 }
 
-
-//old but gold
-/*
-pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)> ) {
-    let (lock, cvar) = &*state;
-    loop {
-        let mut state = lock.lock().unwrap();
-        while *state != BackupState::BackingUp {
-            state = cvar.wait(state).unwrap();
-        }
-
-        //prendere da file//
-        let source = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder".to_string();
-        let destination = "C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder".to_string();
-        let extensions = vec!["mm", "rs", "jpg", "*"]; // Lista di estensioni da copiare (esempio)
-
-        let start_time = Instant::now();
-
-        let source_path = Path::new(&source);
-        let destination_path = Path::new(&destination);
-
-        // Crea la directory di destinazione se non esiste
-        if !destination_path.exists() {
-            fs::create_dir_all(destination_path).unwrap();
-        }
-
-        // Avvia la copia ricorsiva dal percorso sorgente
-        copy_dir_recursive(source_path, destination_path, &extensions);
-
-        let duration = start_time.elapsed();
-
-        println!("Backup completato in {:?}", duration);
-
-        *state = BackupState::Idle;
-        cvar.notify_all();
-    }
-}
-
-// Funzione ricorsiva per copiare file e directory
-fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
-    // Itera attraverso gli elementi nella directory sorgente
-    for entry in fs::read_dir(source).unwrap() {
-        let entry = entry.unwrap();
-        let entry_path = entry.path();
-        let file_name = entry.file_name();
-        let dest_path = destination.join(&file_name);
-
-        if entry_path.is_dir() {
-            // Se è una directory, creala e copia i contenuti ricorsivamente
-            fs::create_dir_all(&dest_path).unwrap();
-            copy_dir_recursive(&entry_path, &dest_path, extensions);
-        } else {
-            // Se è un file, copia solo se l'estensione è nell'elenco o se "*" è presente
-            if should_copy_file(&entry_path, extensions) {
-                fs::copy(&entry_path, &dest_path).unwrap();
-            }
-        }
-    }
-}
-
-// Funzione che determina se il file deve essere copiato in base all'estensione
-fn should_copy_file(file_path: &Path, extensions: &[&str]) -> bool {
-    if extensions.contains(&"*") {
-        return true; // Copia tutto se "*" è presente
-    }
-
-    if let Some(extension) = file_path.extension() {
-        if let Some(ext_str) = extension.to_str() {
-            return extensions.contains(&ext_str); // Copia solo se l'estensione è nell'elenco
-        }
-    }
-
-    false // Non copiare se l'estensione non corrisponde
-}
-*/
-
-//util match
-/*
-match config {
-            Ok(config) => {
-                println!("Configurazione letta con successo!");
-                /*
-                println!("Cartella sorgente: {}", config.backup.source_directory);
-                println!("Cartella destinazione: {}", config.backup.destination_directory);
-                println!("Tipi di file da salvare: {:?}", config.backup.file_types);
-                println!("Modalità di backup: {}", config.backup.backup_mode);
-                println!("Intervallo di log CPU: {} secondi", config.cpu_logging.interval_seconds);
-                */
-                source_path = Path::new(&config.backup.source_directory);
-                destination_path = Path::new(&config.backup.destination_directory);
-                // Convert Vec<String> to Vec<&str>
-                let vec_of_str: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
-                // Convert Vec<&str> to &[&str]
-                extensions = &vec_of_str;
-            },
-            Err(e) => {
-                println!("Errore nella lettura della configurazione: {}", e);
-            }
-        }
-*/
