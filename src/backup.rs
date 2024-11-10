@@ -30,7 +30,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         } else if cfg!(target_os = "macos") {
             get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
-            find_usb_partition_mountpoint().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
+            find_external_disk_linux().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
         }
          else {
             panic!("Unsupported operating system!");
@@ -217,7 +217,7 @@ fn get_mount_point_linux(disk: &str) -> Option<String> {
 
     None
 }
-fn find_usb_partition_mountpoint() -> Option<String> {
+fn find_external_disk_linux() -> Option<String> {
     // Esegui il comando lsblk con l'opzione -o NAME,TYPE,TRAN,MOUNTPOINT per ottenere i dispositivi, i tipi e i punti di mount
     let output = Command::new("lsblk")
         .arg("-o")
