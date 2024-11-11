@@ -62,10 +62,11 @@ fn main() {
 
 fn set_bootstrap() -> std::io::Result<()>{
     // Path del file originale
-    let target = Path::new(r"C:/Users/maxim/Desktop/backup_emergency/target/debug/backup_emergency.exe");
+    let target = env::current_exe().expect("Failed to get current exe path");
 
     // Path del collegamento simbolico
-    let link = Path::new(r"C:/Users/maxim/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/backup_emergency");
+    let link = env::var("APPDATA").unwrap() +
+           r"\Microsoft\Windows\Start Menu\Programs\Startup\backup_emergency";
 
     // Creazione del link simbolico
     symlink_file(&target, &link)?;
