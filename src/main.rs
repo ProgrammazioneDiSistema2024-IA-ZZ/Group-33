@@ -14,9 +14,14 @@ use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
 use crate::types::BackupState;
 
+use std::os::windows::fs::symlink_file;
+
+
 fn main() {
-    //set the bootstrap
-    set_bootstrap();
+    // Chiama set_bootstrap e gestisce eventuali errori
+    if let Err(e) = set_bootstrap() {
+        eprintln!("Errore durante la creazione del link simbolico: {}", e);
+    }
 
     // Ottieni il PID del processo corrente
     let process_id = std::process::id();
@@ -55,23 +60,16 @@ fn main() {
     cpu_log_thread.join().expect("Errore nel thread di logging CPU.");
 }
 
-fn set_bootstrap(){
-    // Ottieni il percorso della cartella Startup per l'utente
-    let startup_path = env::var("APPDATA").unwrap() +
-        r"\Microsoft\Windows\Start Menu\Programs\Startup";
+fn set_bootstrap() -> std::io::Result<()>{
+    // Path del file originale
+    let target = Path::new(r"C:/Users/maxim/Desktop/backup_emergency/target/debug/backup_emergency.exe");
 
-    // Percorso della tua applicazione (per esempio, supponiamo sia nello stesso eseguibile)
-    let exe_path = env::current_exe().expect("Failed to get current exe path");
+    // Path del collegamento simbolico
+    let link = Path::new(r"C:/Users/maxim/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/backup_emergency");
 
-    // Nome del collegamento che vogliamo copiare nella cartella Startup
-    let shortcut_name = "backup_emergency.lnk";
-    let shortcut_path = Path::new(&startup_path).join(shortcut_name);
+    // Creazione del link simbolico
+    symlink_file(&target, &link)?;
 
-    // Copia il file eseguibile come collegamento nella cartella Startup
-    if !shortcut_path.exists() {
-        fs::copy(&exe_path, &shortcut_path)
-            .expect("Failed to copy exe to Startup folder");
-    }
-
-    println!("L'applicazione è stata aggiunta alla cartella di avvio automatico.")
+    println!("Link simbolico creato con successo!");
+    Ok(())
 }
