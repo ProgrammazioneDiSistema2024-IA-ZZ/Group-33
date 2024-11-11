@@ -18,6 +18,7 @@ use std::os::windows::fs::symlink_file;
 
 
 fn main() {
+    //AGGIUNGERE IF PER SO
     // Chiama set_bootstrap e gestisce eventuali errori
     if let Err(e) = set_bootstrap() {
         eprintln!("Errore durante la creazione del link simbolico: {}", e);
