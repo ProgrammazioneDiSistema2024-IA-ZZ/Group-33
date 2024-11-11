@@ -1,12 +1,9 @@
-use std::{fs, thread, time::Duration};
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::{Path};
 use std::time::Instant;
 use std::sync::{Arc, Condvar, Mutex};
 use std::str;
 use std::process::Command;
-use std::fs::OpenOptions;
-use std::io::Write;
-use sysinfo::{System, Pid, ProcessesToUpdate};
 use regex::Regex;
 use chrono::Local;
 use crate::read_files::read_config;
@@ -40,8 +37,8 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
 
         let extensions: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
 
-        let mut source_path = Path::new(&source);
-        let mut destination_path = Path::new(&destination);;
+        let source_path = Path::new(&source);
+        let destination_path = Path::new(&destination);
 
         // Crea la directory di destinazione se non esiste
         if !destination_path.exists() {
@@ -61,7 +58,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
         *state = BackupState::Idle;
         cvar.notify_all();
     }
-    Ok(())
+    //Ok(())
 }
 
 
@@ -88,7 +85,7 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
     }
 
     let device_id;
-    if(tmp_device_id.is_none()){
+    if tmp_device_id.is_none(){
         return None;
     }else {
         device_id = tmp_device_id.unwrap();
@@ -107,7 +104,7 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
     for line in stdout.lines() {
         if line.contains(&device_id) {
             let mut iter = line.split_whitespace();
-            let first = iter.next().unwrap();
+            iter.next().unwrap();
             // Ottieni il resto della stringa dopo il primo spazio
             partition_id = iter.collect::<Vec<&str>>().join(" ");
         }
@@ -146,7 +143,6 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
 
         }
     }
-
     None
 }
 // MACOS
@@ -199,6 +195,7 @@ fn find_external_disk_macos() -> Option<String> {
     disk_name
 }
 // LINUX
+/*
 fn get_mount_point_linux(disk: &str) -> Option<String> {
     // Esegui il comando lsblk per ottenere il punto di montaggio del disco specificato
     let output = Command::new("lsblk")
@@ -221,6 +218,7 @@ fn get_mount_point_linux(disk: &str) -> Option<String> {
 
     None
 }
+*/
 fn find_external_disk_linux() -> Option<String> {
     // Esegui il comando lsblk con l'opzione -o NAME,TYPE,TRAN,MOUNTPOINT per ottenere i dispositivi, i tipi e i punti di mount
     let output = Command::new("lsblk")

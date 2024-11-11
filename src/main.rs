@@ -6,12 +6,9 @@ mod types;
 mod performance;
 
 use std::sync::{Arc, Mutex, Condvar};
-use std::{fs, thread, time::Duration};
+use std::thread;
 use std::env;
-use std::path::Path;
-use std::fs::OpenOptions;
-use std::io::Write;
-use sysinfo::{System, Pid, ProcessesToUpdate};
+use sysinfo::Pid;
 use crate::types::BackupState;
 
 use std::os::windows::fs::symlink_file;
@@ -42,13 +39,15 @@ fn main() {
     // Thread per il backup
     let state_clone = Arc::clone(&state);
     let backup_thread = thread::spawn(move || {
-        backup::backup_files(state_clone);
+        if let Err(e) = backup::backup_files(state_clone) {
+            eprintln!("Errore durante la creazione del backup {}", e);
+        }
     });
 
     // Thread per il logging del consumo di CPU
     // Avvia un thread separato per registrare il consumo di CPU ogni 2 minuti
     let cpu_log_thread = thread::spawn( move || {
-        performance::log_cpu_usage_periodically(pid, 5, "cpu_usage.log"); // 120 secondi = 2 minuti
+        performance::log_cpu_usage_periodically(pid, 120, "cpu_usage.log"); // 120 secondi = 2 minuti
     });
 
     //finestra con loop per conferma backup

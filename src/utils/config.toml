@@ -5,4 +5,4 @@ destination_directory = "D:\\my_backup" #"C:\\Users\\maxim\\Desktop\\file_backup
 file_types = ["mm", "rs", "jpg", "*"]  # Tipi di file da includere nel backup
 
 [cpu_logging]
-interval_seconds = 120  # Intervallo per log del consumo CPU
+log_path = "mettere log path"  # Intervallo per log del consumo CPU

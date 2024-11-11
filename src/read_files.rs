@@ -10,7 +10,7 @@ pub struct BackupConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct CpuLoggingConfig {
-    pub interval_seconds: u64,
+    pub log_path: String,
 }
 
 #[derive(Debug, Deserialize)]

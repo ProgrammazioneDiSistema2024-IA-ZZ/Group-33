@@ -71,13 +71,13 @@ pub fn make_window( state: Arc<(Mutex<BackupState>, Condvar)> ){
                 let scale = Scale::uniform(24.0); // Imposta la dimensione del font
                 let text = "Close the window or move the mouse to\nthe top-left corner to cancel, move the\nmouse to the bottom-right corner to\nconfirm the backup.";
                 let v_metrics = font.v_metrics(scale);
-                let startOffset = point(5.0, 5.0 + v_metrics.ascent); // start position of text
-                let mut offset = startOffset.clone();
+                let start_offset = point(5.0, 5.0 + v_metrics.ascent); // start position of text
+                let mut offset = start_offset.clone();
 
                 for c in text.chars() {
                     if c == '\n' {
                         // Gestisci il carattere di nuova riga
-                        offset.x = startOffset.x; // Ripristina l'offset orizzontale
+                        offset.x = start_offset.x; // Ripristina l'offset orizzontale
                         offset.y += v_metrics.ascent + v_metrics.descent + 10.0; // Aggiungi una spaziatura tra le righe
                         continue; // Salta al prossimo carattere
                     }
