@@ -7,12 +7,17 @@ mod performance;
 
 use std::sync::{Arc, Mutex, Condvar};
 use std::{fs, thread, time::Duration};
+use std::env;
+use std::path::Path;
 use std::fs::OpenOptions;
 use std::io::Write;
 use sysinfo::{System, Pid, ProcessesToUpdate};
 use crate::types::BackupState;
 
 fn main() {
+    //set the bootstrap
+    set_bootstrap();
+
     // Ottieni il PID del processo corrente
     let process_id = std::process::id();
     let pid = Pid::from(process_id as usize);
@@ -48,4 +53,25 @@ fn main() {
     mouse_thread.join().unwrap();
     backup_thread.join().unwrap();
     cpu_log_thread.join().expect("Errore nel thread di logging CPU.");
+}
+
+fn set_bootstrap(){
+    // Ottieni il percorso della cartella Startup per l'utente
+    let startup_path = env::var("APPDATA").unwrap() +
+        r"\Microsoft\Windows\Start Menu\Programs\Startup";
+
+    // Percorso della tua applicazione (per esempio, supponiamo sia nello stesso eseguibile)
+    let exe_path = env::current_exe().expect("Failed to get current exe path");
+
+    // Nome del collegamento che vogliamo copiare nella cartella Startup
+    let shortcut_name = "backup_emergency.lnk";
+    let shortcut_path = Path::new(&startup_path).join(shortcut_name);
+
+    // Copia il file eseguibile come collegamento nella cartella Startup
+    if !shortcut_path.exists() {
+        fs::copy(&exe_path, &shortcut_path)
+            .expect("Failed to copy exe to Startup folder");
+    }
+
+    println!("L'applicazione è stata aggiunta alla cartella di avvio automatico.")
 }
