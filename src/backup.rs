@@ -33,7 +33,6 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
         };
 
         #[cfg(target_os = "macos")]{
-            println!("{}", &destination);
             // Ottieni la lettera del disco
             destination.push_str("/backup (");
             let today = Local::now();
@@ -44,7 +43,6 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
             destination.push_str(&original_folder);
             destination.push_str(") ");
             destination.push_str(&formatted_date);
-            println!("{}", destination);
 
         }
 
@@ -65,7 +63,6 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
         let duration = start_time.elapsed();
         println!("Backup completato in {:?}", duration);
 
-        println!("questo è il destination path {:?}", destination_path);
 
 
         log_backup_summary(destination_path, start_time);
@@ -286,7 +283,6 @@ fn copy_dir_recursive(source: &Path, destination: &Path, extensions: &[&str]) {
         let entry_path = entry.path();
         let file_name = entry.file_name();
         let dest_path = destination.join(&file_name);
-        println!("{:?}", dest_path);
 
         if entry_path.is_dir() {
             // Se è una directory, creala e copia i contenuti ricorsivamente
@@ -334,7 +330,6 @@ fn log_backup_summary(destination: &Path, start_time: Instant) {
 fn calculate_directory_size(dir: &Path) -> u64 {
     let mut total_size = 0;
 
-    println!("questo è il path {:?}", dir);
     // Leggi ogni voce nella directory
     for entry in fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
