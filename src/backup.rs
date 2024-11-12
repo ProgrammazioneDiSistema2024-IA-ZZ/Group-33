@@ -6,10 +6,10 @@ use std::str;
 use std::process::Command;
 use regex::Regex;
 use chrono::Local;
-use crate::read_files::read_config;
+use crate::read_files::{read_config, BackupConfig};
 use crate::types::BackupState;
 
-pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), Box<dyn std::error::Error>> {
+pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: BackupConfig ) -> Result<(), Box<dyn std::error::Error>> {
     let (lock, cvar) = &*state;
     loop {
         let mut state = lock.lock().unwrap();
@@ -20,14 +20,13 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
 
         let start_time = Instant::now();
 
-        let config = read_config("src/utils/config.toml")?;
-        let source = config.backup.source_directory.clone();
+        let source = config_backup.source_directory.clone();
         let destination = if cfg!(target_os = "windows") {
-            find_external_disk_win(&source).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Windows
+            find_external_disk_win(&source).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
-            get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per macOS
+            get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
-            find_external_disk_linux().unwrap_or(config.backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
+            find_external_disk_linux().unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
         }
          else {
             panic!("Unsupported operating system!");
@@ -35,7 +34,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>  ) -> Result<(), 
 
         println!("{}", &destination);
 
-        let extensions: Vec<&str> = config.backup.file_types.iter().map(|s| s.as_str()).collect();
+        let extensions: Vec<&str> = config_backup.file_types.iter().map(|s| s.as_str()).collect();
 
         let source_path = Path::new(&source);
         let destination_path = Path::new(&destination);
