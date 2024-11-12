@@ -1,6 +1,10 @@
+// Disabilita la console su Windows, eseguendo l'app in modalità GUI
+//#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod mouse;
 mod window;
 mod backup;
+
 mod read_files;
 mod types;
 mod performance;
@@ -8,13 +12,28 @@ mod performance;
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
 use std::env;
+use std::path::Path;
 use sysinfo::Pid;
 use crate::types::BackupState;
 
 use std::os::windows::fs::symlink_file;
 
-
 fn main() {
+    // Ottieni gli argomenti della linea di comando
+    let args: Vec<String> = env::args().collect();
+
+    // Se il primo argomento (dopo il nome del programma) è presente, usalo come percorso,
+    // altrimenti usa il percorso di default
+    let file_path = if args.len() > 1 {
+        &args[1]
+    } else {
+        ""
+    };
+
+    // Mostra il percorso del file scelto
+    println!("Using file path: {}", file_path);
+
+
     //AGGIUNGERE IF PER SO
     // Chiama set_bootstrap e gestisce eventuali errori
     if let Err(e) = set_bootstrap() {
