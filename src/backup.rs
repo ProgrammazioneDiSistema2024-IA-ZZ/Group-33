@@ -327,6 +327,7 @@ fn log_backup_summary(destination: &Path, start_time: Instant) {
     fs::write(Path::new(destination).join("backup_log.txt"), log_message).unwrap();
 }
 
+
 fn calculate_directory_size(dir: &Path) -> u64 {
     let mut total_size = 0;
 
@@ -335,10 +336,23 @@ fn calculate_directory_size(dir: &Path) -> u64 {
         let entry = entry.unwrap();
         let entry_path = entry.path();
         let metadata = fs::metadata(&entry_path).unwrap();
+        println!("DIR::: {:?}", entry);
 
         // Se la voce è un file, somma la sua dimensione
         if metadata.is_file() {
+
+            #[cfg(target_os = "windows")]
             total_size += metadata.len();
+
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            {
+                let file_name = entry.file_name().into_string().unwrap();
+                // Ignora i file nascosti di sistema (._*)
+                if !file_name.starts_with("._") {
+                    println!("{:?}", metadata.len());
+                    total_size += metadata.len();
+                }
+            }
         }
         // Se la voce è una sottocartella, calcola ricorsivamente la sua dimensione
         else if metadata.is_dir() {
