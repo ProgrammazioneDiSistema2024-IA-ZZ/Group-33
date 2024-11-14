@@ -28,8 +28,6 @@ use crate::bootstrap::set_bootstrap;
 #[cfg(target_os = "windows")]
 //use std::os::windows::fs::symlink_file;
 
-
-
 #[cfg(target_os = "macos")]
 use std::os::unix::fs::symlink;
 
