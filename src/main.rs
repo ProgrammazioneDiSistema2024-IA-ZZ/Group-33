@@ -26,10 +26,13 @@ use crate::read_files::{read_config, BackupConfig};
 use crate::bootstrap::set_bootstrap;
 
 #[cfg(target_os = "windows")]
-#use std::os::windows::fs::symlink_file;
+//use std::os::windows::fs::symlink_file;
+
+
 
 #[cfg(target_os = "macos")]
 use std::os::unix::fs::symlink;
+
 
 fn main() {
     // get argument from command line to set the config file (if needed)
