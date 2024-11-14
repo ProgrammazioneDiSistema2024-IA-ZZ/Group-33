@@ -8,6 +8,7 @@ mod backup;
 mod read_files;
 mod types;
 mod performance;
+mod bootstrap;
 
 use std::sync::{Arc, Mutex, Condvar};
 use std::thread;
@@ -21,13 +22,17 @@ use std::fs;
 use std::collections::HashMap;
 use toml::{self, Value};
 use dirs::document_dir;
+use crate::read_files::{read_config, BackupConfig};
+use crate::bootstrap::set_bootstrap;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::symlink_file;
-use crate::read_files::{read_config, BackupConfig};
 
 #[cfg(target_os = "macos")]
-use std::os::unix::fs::symlink as symlink_file;
+use std::os::unix::fs::symlink;
+
+use auto_launch::AutoLaunch;
+
 fn main() {
     // get argument from command line to set the config file (if needed)
     let args: Vec<String> = env::args().collect();
@@ -55,9 +60,12 @@ fn main() {
 
     //AGGIUNGERE IF PER SO
     // Chiama set_bootstrap e gestisce eventuali errori
+    /*
     if let Err(e) = set_bootstrap() {
         eprintln!("Errore durante la creazione del link simbolico: {}", e);
     }
+    */
+    set_bootstrap();
 
     // Ottieni il PID del processo corrente
     let process_id = std::process::id();
@@ -110,41 +118,6 @@ fn main() {
     cpu_log_thread.join().expect("Errore nel thread di logging CPU.");
 }
 
-fn set_bootstrap() -> std::io::Result<()>{
-    #[cfg(target_os = "windows")]
-    {
-        // Path del file originale
-        let target = env::current_exe().expect("Failed to get current exe path");
-        // Path del collegamento simbolico
-        let link = env::var("APPDATA").unwrap() +
-            r"\Microsoft\Windows\Start Menu\Programs\Startup\backup_emergency";
-
-        // Creazione del link simbolico
-        symlink_file(&target, &link)?;
-
-        println!("Link simbolico creato con successo!");
-        Ok(())
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        use std::os::unix::fs::symlink;
-        use std::env;
-
-        // Path del file originale
-        let target = env::current_exe().expect("Failed to get current exe path");
-        // Path del collegamento simbolico
-        let home_dir = env::var("HOME").expect("Could not find home directory");
-        let link = format!("{}/Library/LaunchAgents/backup_emergency", home_dir);
-
-        // Creazione del link simbolico
-        symlink(&target, &link)?;
-
-        println!("Link simbolico creato con successo su macOS!");
-        Ok(())
-    }
-
-}
 
 fn read_lines_to_vec(file_path: &str) -> io::Result<Vec<String>> {
     let path = Path::new(file_path);
@@ -195,7 +168,7 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
             // Converte `PathBuf` in `String` prima di assegnarlo
             cpu_logging_section["log_path"] = Value::String(documents_path.to_string_lossy().into_owned());
         }
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
         if let Some(cpu_logging_section) = config.get_mut("cpu_logging") {
             // Ottieni il percorso della cartella Documenti e assegnalo a una variabile
             let mut documents_path: PathBuf = document_dir().expect("Impossibile trovare la cartella Documenti");
@@ -204,10 +177,7 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
             // Converte `PathBuf` in `String` prima di assegnarlo
             cpu_logging_section["log_path"] = Value::String(documents_path.to_string_lossy().into_owned());
         }
-        #[cfg(target_os = "linux")]
-        if let Some(cpu_logging_section) = config.get_mut("cpu_logging") {
-            cpu_logging_section["log_path"] = "";
-        }
+
     }
 
     // Scrive il contenuto aggiornato nel file `config.toml`
