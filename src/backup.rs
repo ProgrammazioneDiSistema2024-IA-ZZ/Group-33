@@ -342,7 +342,9 @@ fn calculate_directory_size(dir: &Path) -> u64 {
         if metadata.is_file() {
 
             #[cfg(target_os = "windows")]
-            total_size += metadata.len();
+            {
+                total_size += metadata.len();
+            }
 
             #[cfg(any(target_os = "macos", target_os = "linux"))]
             {
