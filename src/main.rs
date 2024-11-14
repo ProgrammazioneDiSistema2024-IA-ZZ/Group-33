@@ -19,19 +19,17 @@ use crate::types::BackupState;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::fs;
-use std::collections::HashMap;
+
 use toml::{self, Value};
 use dirs::document_dir;
 use crate::read_files::{read_config, BackupConfig};
 use crate::bootstrap::set_bootstrap;
 
 #[cfg(target_os = "windows")]
-use std::os::windows::fs::symlink_file;
+#use std::os::windows::fs::symlink_file;
 
 #[cfg(target_os = "macos")]
 use std::os::unix::fs::symlink;
-
-use auto_launch::AutoLaunch;
 
 fn main() {
     // get argument from command line to set the config file (if needed)
