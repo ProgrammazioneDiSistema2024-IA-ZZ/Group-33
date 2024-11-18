@@ -31,6 +31,13 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
         else {
             panic!("Unsupported operating system!");
         };
+        
+        if destination=="Error to find USB drive" {
+            println!("{}",destination);
+            *state = BackupState::Idle;
+            cvar.notify_all();
+            continue
+        }
 
         #[cfg(any(target_os = "macos", target_os = "linux"))]{
             // Ottieni la lettera del disco
@@ -89,6 +96,12 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
 
     for line in stdout.lines() {
         if line.contains("Removable Media") {
+            if let Some(id) = line.split_whitespace().nth(0) {
+                tmp_device_id = Some(id.to_string());
+                break;
+            }
+        }
+        else if line.contains("External hard disk media") { 
             if let Some(id) = line.split_whitespace().nth(0) {
                 tmp_device_id = Some(id.to_string());
                 break;
