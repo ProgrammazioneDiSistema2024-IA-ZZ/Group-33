@@ -22,7 +22,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
 
         let source = config_backup.source_directory.clone();
         let mut destination = if cfg!(target_os = "windows") {
-            find_external_disk_win(&source).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Windows
+            find_external_disk_win().unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
             get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
@@ -38,27 +38,35 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
             cvar.notify_all();
             continue
         }
+        // Ottieni la lettera del disco
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        destination.push_str("/backup (");
+        #[cfg(any(target_os = "windows"))]
+        destination.push_str("\\backup (");
+        let today = Local::now();
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        let original_folder = source.split("/").last().unwrap();
+        #[cfg(any(target_os = "windows"))]
+        let original_folder = source.split("\\").last().unwrap();
 
-        #[cfg(any(target_os = "macos", target_os = "linux"))]{
-            // Ottieni la lettera del disco
-            destination.push_str("/backup (");
-            let today = Local::now();
-            let original_folder = source.split("/").last().unwrap();
-            let formatted_date = today.format("Date_%Y-%m-%d Time_%H_%M_%S").to_string();
+        let formatted_date = today.format("Date_%Y-%m-%d Time_%H_%M_%S").to_string();
 
-            // Concatenala alla stringa
-            destination.push_str(&original_folder);
-            destination.push_str(") ");
-            destination.push_str(&formatted_date);
-
-        }
+        // Concatenala alla stringa
+        destination.push_str(&original_folder);
+        destination.push_str(") ");
+        destination.push_str(&formatted_date);
 
 
         let extensions: Vec<&str> = config_backup.file_types.iter().map(|s| s.as_str()).collect();
 
         let source_path = Path::new(&source);
+        if !Path::new(source_path).exists(){
+            println!("Percorso non valido o non è una directory: {:?}", source_path);
+            *state = BackupState::Idle;
+            cvar.notify_all();
+            continue;  // Continua con la prossima iterazione del ciclo
+        }
         let destination_path = Path::new(&destination);
-
         // Crea la directory di destinazione se non esiste
         if !destination_path.exists() {
             fs::create_dir_all(destination_path).unwrap();
@@ -82,7 +90,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
 
 
 // WINDOWS
-fn find_external_disk_win(source_path:&str) -> Option<String> {
+fn find_external_disk_win() -> Option<String> {
     let output = Command::new("wmic")
         .arg("diskdrive")
         .arg("get")
@@ -150,16 +158,7 @@ fn find_external_disk_win(source_path:&str) -> Option<String> {
             if let Some(caps) = re.captures(line) {
                 // Ottieni la lettera del disco
                 let disk_letter = &caps[1];
-                let mut full_path = disk_letter.to_string();
-                full_path.push_str("\\backup (");
-                let today = Local::now();
-                let original_folder = source_path.split("\\").last().unwrap();
-                let formatted_date = today.format("Date_%Y-%m-%d Time_%H_%M_%S").to_string();
-
-                // Concatenala alla stringa
-                full_path.push_str(&original_folder);
-                full_path.push_str(") ");
-                full_path.push_str(&formatted_date);
+                let full_path = disk_letter.to_string();
                 return Some(full_path);
             } else {
                 println!("Lettera del disco non trovata.");

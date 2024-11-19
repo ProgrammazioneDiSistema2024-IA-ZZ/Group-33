@@ -19,9 +19,9 @@ use crate::types::BackupState;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::fs;
+use dirs::config_dir;
 
 use toml::{self, Value};
-use dirs::document_dir;
 use crate::read_files::{read_config, BackupConfig};
 use crate::bootstrap::set_bootstrap;
 
@@ -37,25 +37,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     // Se il primo argomento (dopo il nome del programma) è presente, usalo come percorso,
     // altrimenti usa il percorso di default
-    if args.len() == 2 {
-        match read_lines_to_vec(&args[1]) {
-            Ok(lines) => {
-                /*
-                for (index, line) in lines.iter().enumerate() {
-                    println!("Line {}: {}", index + 1, line);
-                }
-                */
-                if let Err(e) = update_config_file(lines, "src/utils/config.toml") {
-                    eprintln!("Errore nell'aggiornamento del file di configurazione: {}", e);
-                } else {
-                    println!("File di configurazione aggiornato correttamente!");
-                }
-            }
-            Err(e) => {
-                eprintln!("Error reading file: {}", e);
-            }
-        }
-    };
+    
 
     //AGGIUNGERE IF PER SO
     // Chiama set_bootstrap e gestisce eventuali errori
@@ -72,10 +54,45 @@ fn main() {
     println!("ID process = {}",pid);
 
     //lettura file configurazione
-    let mut source_cpu_logging = String::from("C:\\Default\\LogPath\\log.txt"); // Valore predefinito per `source_cpu_logging`;
+    let mut config_path = get_config_path();
+    let mut log_path = config_path.clone();
+    log_path.push("log_CPU.txt");
+    let mut source_cpu_logging = String::from(log_path.to_str().unwrap().replace("\\", "\\\\")); // Valore predefinito per `source_cpu_logging`;
     let mut config_backup = BackupConfig::default(); // Usa il valore predefinito
-    match read_config("src/utils/config.toml") {
+    config_path.push("config.toml");
+    //let config_path = env::current_dir().unwrap().join("src/utils/config.toml");
+    if !config_path.exists() {
+        let default_config = format!(r#"
+# Configurazione backup
+[backup]
+source_directory = "Insert a Source Folder"
+destination_directory = "Error to find USB drive"
+file_types = ["*"]  # Tipi di file da includere nel backup
+
+[cpu_logging]
+log_path = "{log_path}"  # Percorso del file di log CPU
+"#,
+     log_path = source_cpu_logging
+);
+        fs::write(&config_path, default_config).unwrap();
+        println!("Creato il file di configurazione in: {}", config_path.display());
+    }
+    match read_config(config_path.to_str().unwrap()) {
         Ok(config) => {
+            if args.len() == 2 {
+                match read_lines_to_vec(&args[1]) {
+                    Ok(lines) => {
+                        if let Err(e) = update_config_file(lines, config_path.to_str().unwrap()) {
+                            eprintln!("Errore nell'aggiornamento del file di configurazione: {}", e);
+                        } else {
+                            println!("File di configurazione aggiornato correttamente!");
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error reading file: {}", e);
+                    }
+                }
+            };
             source_cpu_logging = config.cpu_logging.log_path.clone();
             config_backup = config.backup.clone();
         }, // Configurazione caricata con successo
@@ -131,9 +148,9 @@ fn read_lines_to_vec(file_path: &str) -> io::Result<Vec<String>> {
 }
 
 fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Verifica che `values` contenga esattamente 3 elementi
+    // Verifica che `values` non contenga meno di 2 elementi
     if values.len() < 2 {
-        return Err("Il vettore deve contenere esattamente 3 elementi".into());
+        return Err("Il vettore non contenga meno di 2 elementi".into());
     }
 
     // Carica il contenuto del file di configurazione
@@ -142,7 +159,14 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
 
     // Assegna i valori rispettivi
     if let Some(backup_section) = config.get_mut("backup") {
-        backup_section["source_directory"] = Value::String(values[0].clone());
+        let mut source_dir = values[0].clone();
+        if source_dir.starts_with("\"") && source_dir.ends_with("\"") {
+            source_dir = source_dir[1..source_dir.len()-1].to_string();
+        }
+        if source_dir.contains("\\\\") {
+            source_dir = source_dir.replace("\\\\", "\\");
+        }
+        backup_section["source_directory"] = Value::String(source_dir);
 
         // Divide il secondo valore in base alla virgola e rimuove spazi vuoti
         let file_types: Vec<Value> = values[1]
@@ -157,7 +181,9 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
         if let Some(cpu_logging_section) = config.get_mut("cpu_logging") {
             cpu_logging_section["log_path"] = Value::String(values[2].clone());
         }
-    }else{
+    }
+        /*
+    else{
         #[cfg(target_os = "windows")]
         if let Some(cpu_logging_section) = config.get_mut("cpu_logging") {
             // Ottieni il percorso della cartella Documenti e assegnalo a una variabile
@@ -178,10 +204,21 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
         }
 
     }
+    
+         */
 
     // Scrive il contenuto aggiornato nel file `config.toml`
     let updated_content = toml::to_string(&config)?;
     fs::write(config_path, updated_content)?;
 
     Ok(())
+}
+
+fn get_config_path() -> PathBuf {
+    let mut config_path = config_dir().expect("Impossibile ottenere la directory di configurazione");
+    config_path.push("Backup Emergency");
+    if !config_path.exists() {
+        fs::create_dir_all(&config_path).expect("Impossibile creare la directory di configurazione");
+    }
+    config_path
 }

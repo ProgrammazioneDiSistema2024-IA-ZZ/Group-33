@@ -1,8 +1,0 @@
-# Configurazione backup
-[backup]
-source_directory = "C:\\Users\\maxim\\Desktop\\file_backup\\source_folder"
-destination_directory = "D:\\my_backup" #"C:\\Users\\maxim\\Desktop\\file_backup\\destination_folder"
-file_types = ["mm", "rs", "jpg", "*"]  # Tipi di file da includere nel backup
-
-[cpu_logging]
-log_path = "mettere log path"  # Intervallo per log del consumo CPU
