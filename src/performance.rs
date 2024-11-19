@@ -8,9 +8,9 @@ use chrono::Local;
 // Funzione che registra l'utilizzo della CPU ogni `interval_seconds` secondi
 pub fn log_cpu_usage_periodically(pid: Pid, interval_seconds: u64, log_file_path: &str) {
     let mut sys = System::new_all();
-    let today = Local::now();
 
     loop {
+        let today = Local::now();
         let cpu_usage = get_cpu_usage(&mut sys, pid);
 
         // Scrivi l'utilizzo della CPU nel file di log
