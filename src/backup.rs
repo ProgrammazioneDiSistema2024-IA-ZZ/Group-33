@@ -24,7 +24,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
         let mut destination = if cfg!(target_os = "windows") {
             find_external_disk_win().unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Windows
         } else if cfg!(target_os = "macos") {
-            get_mount_point_macos(&find_external_disk_macos().unwrap()).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per macOS
+            get_mount_point_macos(&find_external_disk_macos().unwrap_or_default()).unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per macOS
         } else if cfg!(target_os = "linux") {
             find_external_disk_linux().unwrap_or(config_backup.destination_directory.clone())  // Richiama la funzione per Ubuntu
         }
