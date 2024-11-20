@@ -1,5 +1,5 @@
 // Disabilita la console su Windows, eseguendo l'app in modalità GUI
-//#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 mod mouse;
 mod window;
@@ -179,7 +179,20 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
 
     if values.len() == 3 {
         if let Some(cpu_logging_section) = config.get_mut("cpu_logging") {
-            cpu_logging_section["log_path"] = Value::String(values[2].clone());
+            let mut log_dir = values[2].clone();
+            if log_dir.starts_with("\"") && log_dir.ends_with("\"") {
+                log_dir = log_dir[1..log_dir.len()-1].to_string();
+            }
+            if log_dir.contains("\\\\") {
+                log_dir = log_dir.replace("\\\\", "\\");
+            }
+            if !log_dir.ends_with(".txt") {
+                #[cfg(any(target_os = "macos", target_os = "linux"))]
+                log_dir.push_str("/log_CPU.txt (");
+                #[cfg(any(target_os = "windows"))]
+                log_dir.push_str("\\log_CPU.txt");
+            }
+            cpu_logging_section["log_path"] = Value::String(log_dir);
         }
     }
         /*
