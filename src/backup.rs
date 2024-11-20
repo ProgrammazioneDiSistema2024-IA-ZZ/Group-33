@@ -6,7 +6,7 @@ use std::str;
 use std::process::Command;
 use regex::Regex;
 use chrono::Local;
-use crate::read_files::{read_config, BackupConfig};
+use crate::read_files::{BackupConfig};
 use crate::types::BackupState;
 
 pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: BackupConfig ) -> Result<(), Box<dyn std::error::Error>> {

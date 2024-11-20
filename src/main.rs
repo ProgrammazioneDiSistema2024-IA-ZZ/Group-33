@@ -188,7 +188,7 @@ fn update_config_file(values: Vec<String>, config_path: &str) -> Result<(), Box<
             }
             if !log_dir.ends_with(".txt") {
                 #[cfg(any(target_os = "macos", target_os = "linux"))]
-                log_dir.push_str("/log_CPU.txt (");
+                log_dir.push_str("/log_CPU.txt");
                 #[cfg(any(target_os = "windows"))]
                 log_dir.push_str("\\log_CPU.txt");
             }
