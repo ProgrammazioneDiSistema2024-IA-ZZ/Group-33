@@ -1,5 +1,4 @@
 use std::sync::{Arc, Condvar, Mutex};
-use std::sync::mpsc;
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
@@ -32,54 +31,17 @@ pub fn make_window(state: Arc<(Mutex<BackupState>, Condvar)>) {
     let font_data = include_bytes!("../fonts/DejaVuSans-Bold.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).expect("Errore nel caricamento del font.");
 
-    // Creiamo un canale per comunicare tra il thread secondario e l'event loop principale
-    let (tx, rx) = mpsc::channel();
-
-    let state_clone = Arc::clone(&state);
-    std::thread::spawn(move || {
-        let (lock, cvar) = &*state_clone;
-        loop {
-            let mut state_guard = lock.lock().unwrap();
-            while *state_guard != BackupState::Confirming {
-                state_guard = cvar.wait(state_guard).unwrap();
-            }
-
-            // Invio comando per rendere visibile la finestra
-            tx.send(true).unwrap();
-
-            while *state_guard == BackupState::Confirming {
-                state_guard = cvar.wait(state_guard).unwrap();
-            }
-
-            if *state_guard == BackupState::Confirmed {
-                *state_guard = BackupState::BackingUp;
-                cvar.notify_all(); // Notifica l’inizio del backup
-            }
-
-            // Invio comando per nascondere la finestra
-            tx.send(false).unwrap();
-        }
-    });
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
-
-        // Gestione dei messaggi dal thread secondario
-        if let Ok(visible) = rx.try_recv() {
-            window.set_visible(visible);
-            if visible {
-                window.request_redraw();
-            }
-        }
-
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                window.set_visible(false);
                 let (lock, cvar) = &*state;
                 let mut state_guard = lock.lock().unwrap();
                 *state_guard = BackupState::Idle;
                 cvar.notify_all();
             }
+
             Event::RedrawRequested(_) => {
                 let frame = pixels.frame_mut();
                 for pixel in frame.chunks_mut(4) {
@@ -117,6 +79,34 @@ pub fn make_window(state: Arc<(Mutex<BackupState>, Condvar)>) {
                 }
                 pixels.render().unwrap();
             }
+
+            // Check the to_close variable to close the window
+               Event::MainEventsCleared => {
+                   let old_visible = window.is_visible();
+
+                   let (lock, cvar) = &*state;
+                   let mut state_guard = lock.lock().unwrap();
+
+                   if(*state_guard != BackupState::Confirming){
+                       if *state_guard == BackupState::Confirmed {
+                           *state_guard = BackupState::BackingUp;
+                           cvar.notify_all();
+                       }
+                       window.set_visible(false);
+                   }else{
+                       if window.is_visible()==Some (false){
+                           window.set_visible(true);
+                       }
+                   }
+                   window.request_redraw();
+
+                   if(window.is_visible() == old_visible){
+                       if(window.is_visible() == Some(false)) {
+                           state_guard = cvar.wait(state_guard).unwrap();
+                       }
+                   }
+               }
+
             _ => {}
         }
     });
