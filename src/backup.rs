@@ -33,7 +33,7 @@ pub fn backup_files( state: Arc<(Mutex<BackupState>, Condvar)>, config_backup: B
         };
         
         if destination=="Error to find USB drive" {
-            println!("{}",destination);
+            println!("{}\x07", destination);
             *state = BackupState::Idle;
             cvar.notify_all();
             continue
