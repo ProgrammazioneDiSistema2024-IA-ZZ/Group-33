@@ -110,15 +110,15 @@ This is an example of how to list things you need to use the software and how to
 3. Setup config file following this template
 
    ```
-    [path_to_folder_to_backup]               # Mandatory
-    [[file_type], [file_type], ...] OR [*]   # Mandatory  
-    [path_log_file]                          # Optional 
+   [path_to_folder_to_backup]               # Mandatory
+   [[file_type], [file_type], ...] OR [*]   # Mandatory  
+   [path_log_file]                          # Optional 
     
-    Example:  
-    /Users/username/Desktop/backup  
-    *  
-    /Users/username/Desktop/log
-    ```
+   Example:  
+   /Users/username/Desktop/backup  
+   *  
+   /Users/username/Desktop/log
+   ```
 
 4. Run the project
    ```sh
