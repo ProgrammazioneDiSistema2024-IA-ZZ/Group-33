@@ -107,18 +107,20 @@ This is an example of how to list things you need to use the software and how to
    ```sh
    cargo build
    ```
-3. Setup config file following this template 
+3. Setup config file following this template
 
+<blockquote>
+[path_to_folder_to_backup]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Mandatory  
 
-    [path_to_folder_to_backup]     # Mandatory
-    [[file_type], [file_type], ...] OR [*]    # Mandatory
-    [path_log_file]    # Optional
-    
-    Example: 
+[[file_type], [file_type], ...] OR [*]&nbsp;&nbsp;&nbsp;# Mandatory  
+[path_log_file]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Optional 
 
-    /Users/username/Desktop/backup
-    *
-    /Users/username/Desktop/log
+Example:  
+/Users/username/Desktop/backup  
+\*  
+/Users/username/Desktop/log
+</blockquote>
+
 4. Run the project
    ```sh
    cargo run [path to config file]
@@ -197,6 +199,8 @@ Porcheddu Massimo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;maximo.19
 Project Link: [https://github.com/ProgrammazioneDiSistema2024-IA-ZZ/Group-33](https://github.com/ProgrammazioneDiSistema2024-IA-ZZ/Group-33)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
+
+
 
 
 
