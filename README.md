@@ -66,11 +66,6 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-
-<div style="text-align: center;">
-  <img src="image/name_title.jpg" alt="image_title" style="width: 50%; max-width: 300px; height: auto;">
-</div>
-
 This application provides an intuitive backup solution activated by mouse gestures, enabling users
 to securely back up their data even when the screen is inaccessible. Designed for simplicity and
 efficiency, it runs seamlessly across Windows, macOS, and Ubuntu, with minimal resource usage and
