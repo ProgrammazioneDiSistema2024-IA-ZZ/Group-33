@@ -1,4 +1,4 @@
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=15469138&assignment_repo_type=AssignmentRepo)
+[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://github.dev/ProgrammazioneDiSistema2024-IA-ZZ/Group-33)
 <div id="top"></div>
 <!--
 *** Thanks for checking out the Best-README-Template. If you have a suggestion
@@ -107,12 +107,18 @@ This is an example of how to list things you need to use the software and how to
    ```sh
    cargo build
    ```
-3. Setup config file following this template
-    ![template.png](image/template.png)
+3. Setup config file following this template 
+
+
+    [path_to_folder_to_backup]     # Mandatory
+    [[file_type], [file_type], ...] OR [*]    # Mandatory
+    [path_log_file]    # Optional
+    
     Example: 
 
-    ![example.png](image/example.png)
-
+    /Users/username/Desktop/backup
+    *
+    /Users/username/Desktop/log
 4. Run the project
    ```sh
    cargo run [path to config file]
