@@ -10,6 +10,8 @@ pub fn log_cpu_usage_periodically(pid: Pid, interval_seconds: u64, log_file_path
     let mut sys = System::new_all();
 
     loop {
+        // Attendi per `interval_seconds` secondi
+        thread::sleep(Duration::from_secs(interval_seconds));
         let today = Local::now();
         let cpu_usage = get_cpu_usage(&mut sys, pid);
 
@@ -20,9 +22,6 @@ pub fn log_cpu_usage_periodically(pid: Pid, interval_seconds: u64, log_file_path
             eprintln!("Errore durante la scrittura nel file di log: {}", e);
         }
         println!("{}", format!("CPU usage: {}%\n", cpu_usage));
-
-        // Attendi per `interval_seconds` secondi
-        thread::sleep(Duration::from_secs(interval_seconds));
     }
 }
 
