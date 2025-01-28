@@ -78,7 +78,7 @@ log_path = "{log_path}"  # Percorso del file di log CPU
         println!("Creato il file di configurazione in: {}", config_path.display());
     }
     match read_config(config_path.to_str().unwrap()) {
-        Ok(config) => {
+        Ok(mut config) => {
             if args.len() == 2 {
                 match read_lines_to_vec(&args[1]) {
                     Ok(lines) => {
@@ -86,6 +86,15 @@ log_path = "{log_path}"  # Percorso del file di log CPU
                             eprintln!("Errore nell'aggiornamento del file di configurazione: {}", e);
                         } else {
                             println!("File di configurazione aggiornato correttamente!");
+                            match read_config(config_path.to_str().unwrap()) {
+                                Ok(updated_config) => {
+                                    config = updated_config;
+                                    println!("Configurazione aggiornata ricaricata!");
+                                }
+                                Err(e) => {
+                                    eprintln!("Errore durante la rilettura del file di configurazione: {}", e);
+                                }
+                            }
                         }
                     }
                     Err(e) => {
